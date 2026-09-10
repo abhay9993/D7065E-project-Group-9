@@ -1,0 +1,27 @@
+# Go
+/bin/
+*.exe
+*.test
+*.out
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data / DB
+*.db
+*.parquet
+data/
+
+# Env
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
