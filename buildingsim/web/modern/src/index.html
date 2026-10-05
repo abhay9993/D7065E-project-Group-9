@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildSim</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%230d1220'/%3E%3Crect x='7' y='11' width='5' height='15' rx='1' fill='%238ab4f8'/%3E%3Crect x='14' y='6' width='5' height='20' rx='1' fill='%238ab4f8'/%3E%3Crect x='21' y='15' width='5' height='11' rx='1' fill='%238ab4f8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="viewer-container">
+<canvas id="canvas"></canvas>
+
+<!-- The dark screen the viewer boots behind: the title treatment over a bar
+     that follows the real load, and nothing else. -->
+<div id="boot-loader">
+  <div id="boot-mark">A-HUSET<span>Luleå University of Technology</span></div>
+  <div id="boot-track"><i id="bootFill"></i></div>
+  <div id="bootLabel">Loading</div>
+</div>
+
+<div id="buildsim-title">A-HUSET<span>Luleå University of Technology</span></div>
+
+<button id="sessionChip" type="button" title="Copy the full viewer session ID" aria-label="Copy viewer session ID">
+  <span class="session-label">SESSION</span>
+  <code id="sessionIdLabel">connecting…</code>
+  <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="10" height="10" rx="2"/><path d="M4 13H3.8A1.8 1.8 0 0 1 2 11.2V3.8A1.8 1.8 0 0 1 3.8 2h7.4A1.8 1.8 0 0 1 13 3.8V4"/></svg>
+</button>
+
+<div id="hud-bar">
+  <button id="btnBuilding" class="hud-btn" title="Show the building from the plaza">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 17h16M4 17V8l6-4 6 4v9M8 17v-4h4v4"/></svg>
+    <span>Building</span>
+  </button>
+  <span id="hudFloors" class="hud-chips"></span>
+  <span class="hud-sep"></span>
+  <button id="btnFind" class="hud-btn" title="Find a room or a piece of equipment">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.6"/><path d="M12.9 12.9 17 17"/></svg>
+    <span>Find</span>
+  </button>
+  <button id="btnRoute" class="hud-btn" title="Route between two rooms">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.6" cy="15.4" r="2.1"/><circle cx="15.4" cy="4.6" r="2.1"/><path d="M6.7 15.4h5.1a3.4 3.4 0 0 0 0-6.8H8.2a3.4 3.4 0 0 1 0-6.8"/></svg>
+    <span>Route</span>
+  </button>
+  <span class="hud-sep"></span>
+  <button id="btnLayers" class="hud-btn" title="Layers">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 2.5 6.5 10 10.5l7.5-4zM2.5 10.5 10 14.5l7.5-4M2.5 14 10 18l7.5-4"/></svg>
+    <span>Layers</span>
+  </button>
+</div>
+
+<div id="findPop" class="hud-pop">
+  <div class="pop-label">Room</div>
+  <input type="text" id="searchRoom" class="pop-input" placeholder="Room name, e.g. A2306" autocomplete="off">
+  <div id="searchResults" class="pop-list"></div>
+  <div class="pop-label">Equipment</div>
+  <input type="text" id="searchEquipment" class="pop-input" placeholder="Name, type, room or status" autocomplete="off">
+  <div id="eqSearchResults" class="pop-list"></div>
+</div>
+
+<div id="routePop" class="hud-pop">
+  <div class="pop-row">
+    <input type="text" id="routeFrom" class="pop-input from" placeholder="From room…" autocomplete="off">
+    <input type="text" id="routeTo" class="pop-input to" placeholder="To room…" autocomplete="off">
+  </div>
+  <div class="pop-row">
+    <button id="btnFindRoute" class="pop-btn primary">Find route</button>
+    <button id="btnClearRoute" class="pop-btn" style="display:none">Clear</button>
+  </div>
+  <div id="routeInfo" class="pop-note"></div>
+</div>
+
+<div id="room-card" class="hidden">
+  <div id="room-card-head">
+    <span id="room-card-title">Details</span>
+    <button id="room-card-close" title="Close">×</button>
+  </div>
+  <div id="info-content"></div>
+</div>
+
+<!-- Only out in the open 3D building: spread the storeys apart by dragging
+     the rail (or any floor plate), and switch single storeys off. -->
+<div id="floorRail" class="hidden">
+  <div id="floorEyes"></div>
+  <div id="explodeTrack" tabindex="0" role="slider" aria-label="Spread the floors apart"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+       title="Drag up to spread the floors apart">
+    <div id="explodeFill"></div>
+    <div id="explodeKnob"><i></i><i></i></div>
+  </div>
+  <div id="explodeCap">SPREAD</div>
+</div>
+
+<div id="liveChip"></div>
+
+<div id="heatLegend"></div>
+
+<div id="alert-stack" aria-live="polite"></div>
+
+<div id="routeFlightChip">
+  <span>Route ready</span>
+  <button id="routeFlightGo">Fly it</button>
+  <button id="routeFlightNo" class="ghost">✕</button>
+</div>
+
+<div id="floor-selector" style="display:none"></div>
+
+<div id="controls">
+  <div id="roomLayerPicker" class="room-layer-picker">
+    <div class="room-layer-heading">Room heatmaps</div>
+    <div id="roomLayerButtons" class="room-layer-buttons" role="group" aria-label="Room heatmap layers"></div>
+  </div>
+  <label><input type="checkbox" id="showWalls" checked> Walls</label>
+  <label><input type="checkbox" id="showDoors" checked> Doors</label>
+  <label><input type="checkbox" id="showRooms" checked> Rooms</label>
+  <label><input type="checkbox" id="showLabels"> Labels</label>
+  <label><input type="checkbox" id="showGraph"> Graph</label>
+  <label><input type="checkbox" id="showWalkable"> Walkable</label>
+  <label><input type="checkbox" id="showStairs" checked> Stairs</label>
+  <label><input type="checkbox" id="showElevators" checked> Elevators</label>
+  <label><input type="checkbox" id="showEquipment" checked> Equipment</label>
+  <label><input type="checkbox" id="showPeopleCount" checked> People count</label>
+</div>
+
+<div id="edit-tools" style="display:none">
+  <button id="btnUndo" disabled>Undo</button>
+  <button id="btnEditRoom">Edit Room</button>
+  <button id="btnRect" disabled>Make Rectangle</button>
+  <button id="btnDelete" disabled>Delete Room</button>
+  <button id="btnMerge" disabled>Merge Rooms</button>
+  <button id="btnSplitH" disabled>Split H</button>
+  <button id="btnSplitV" disabled>Split V</button>
+  <button id="btnSplitFree" disabled>Split Free</button>
+  <button id="btnRename" disabled>Rename</button>
+  <button id="btnToggleCorridor" disabled>Toggle Corridor</button>
+  <label style="color:#aaa"><input type="checkbox" id="snapRight" style="margin-right:3px" checked>Snap 90°</label>
+  <button id="btnWeldVerts" disabled>Weld Vertices</button>
+  <button id="btnSnapWalls" disabled>Snap to Walls</button>
+  <button id="btnNudgeU" disabled title="Extend/shrink top (shift=shrink)">↑</button>
+  <button id="btnNudgeD" disabled title="Extend/shrink bottom">↓</button>
+  <button id="btnNudgeL" disabled title="Extend/shrink left">←</button>
+  <button id="btnNudgeR" disabled title="Extend/shrink right">→</button>
+  <button id="btnNewRoom">New Room</button>
+  <button id="btnDrawWall">Draw Wall</button>
+  <button id="btnEraseWalls">Erase Walls</button>
+  <button id="btnSave">Save</button>
+  <div id="save-status"></div>
+</div>
+
+</div><!-- end viewer-container -->
+
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js",
+               "three/addons/controls/OrbitControls.js": "/vendor/OrbitControls.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+<include file="boot.js"/>
+
+<include file="state.js"/>
+
+<include file="world.js"/>
+
+<include file="viewer.js"/>
+
+<include file="init.js"/>
+
+<include file="session.js"/>
+
+<include file="navigation.js"/>
+
+<include file="equipment.js"/>
+
+<include file="editor.js"/>
+
+<include file="route.js"/>
+
+<include file="interior.js"/>
+
+<include file="shell.js"/>
+
+<include file="live.js"/>
+
+<include file="visualization.js"/>
+
+<include file="flight.js"/>
+
+<include file="peel.js"/>
+
+<include file="hud.js"/>
+
+<include file="floors.js"/>
+
+<include file="ui.js"/>
+
+<include file="photocam.js"/>
+
+<include file="stack.js"/>
+</script>
+
+</body>
+</html>

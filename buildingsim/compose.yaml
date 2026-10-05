@@ -1,0 +1,14 @@
+services:
+  buildsim:
+    build:
+      context: .
+    command: ["start", "--host", "0.0.0.0", "--port", "9090"]
+    ports:
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "/buildsim", "health", "--url", "http://127.0.0.1:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped

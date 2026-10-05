@@ -1,0 +1,218 @@
+services:
+  buildsim:
+    build:
+      context: ./buildingsim
+    command: ["start", "--host", "0.0.0.0", "--port", "9090"]
+    ports:
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "/buildsim", "health", "--url", "http://127.0.0.1:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  occupancy-sim:
+    build:
+      context: ./occupancysim
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+      BUILDSIM_PUBLIC_URL: "http://127.0.0.1:9090"
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+    restart: unless-stopped
+
+  simulator:
+    build:
+      context: ./services/simulator
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      TICK_SECONDS: "5"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sensor-temperature:
+    build:
+      context: ./services/sensors/temperature
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+      PIPELINE_URL: "http://pipeline:8090"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      POLL_SECONDS: "5"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+      pipeline:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sensor-humidity:
+    build:
+      context: ./services/sensors/humidity
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+      PIPELINE_URL: "http://pipeline:8090"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      POLL_SECONDS: "5"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+      pipeline:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sensor-occupancy:
+    build:
+      context: ./services/sensors/occupancy
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+      PIPELINE_URL: "http://pipeline:8090"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      POLL_SECONDS: "5"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+      pipeline:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pipeline:
+    build:
+      context: ./services/pipeline
+    environment:
+      STALE_AFTER_SECONDS: "30"
+    ports:
+      - "127.0.0.1:8090:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  hvac-actuator:
+    build:
+      context: ./services/actuators/hvac
+    environment:
+      BUILDSIM_URL: "http://buildsim:9090"
+    ports:
+      - "127.0.0.1:8091:8091"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8091/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      buildsim:
+        condition: service_healthy
+    restart: unless-stopped
+
+  controller:
+    build:
+      context: ./services/controller
+    environment:
+      PIPELINE_URL: "http://pipeline:8090"
+      ACTUATOR_URL: "http://hvac-actuator:8091"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013"
+      DECIDE_SECONDS: "10"
+    ports:
+      - "127.0.0.1:8092:8092"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8092/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      pipeline:
+        condition: service_healthy
+      hvac-actuator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  baseline-controller:
+    build:
+      context: ./services/baseline-controller
+    environment:
+      ACTUATOR_URL: "http://hvac-actuator:8091"
+      ROOM_LEVEL: "level0"
+      ROOM_NAME: "A1015"
+      DECIDE_SECONDS: "10"
+    ports:
+      - "127.0.0.1:8098:8098"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8098/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      hvac-actuator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./services/dashboard
+    environment:
+      PIPELINE_URL: "http://pipeline:8090"
+      CONTROLLER_URL: "http://controller:8092"
+      BASELINE_CONTROLLER_URL: "http://baseline-controller:8098"
+      ACTUATOR_URL: "http://hvac-actuator:8091"
+      EVALUATION_URL: "http://evaluation:8099"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      REFRESH_SECONDS: "5"
+    ports:
+      - "127.0.0.1:8093:8093"
+    depends_on:
+      pipeline:
+        condition: service_healthy
+      controller:
+        condition: service_healthy
+      baseline-controller:
+        condition: service_healthy
+      hvac-actuator:
+        condition: service_healthy
+      evaluation:
+        condition: service_healthy
+    restart: unless-stopped
+
+  evaluation:
+    build:
+      context: ./services/evaluation
+    environment:
+      PIPELINE_URL: "http://pipeline:8090"
+      ACTUATOR_URL: "http://hvac-actuator:8091"
+      ROOM_LEVEL: "level0"
+      ADAPTIVE_ROOMS: "A1009,A1010,A1013"
+      BASELINE_ROOMS: "A1015"
+      POLL_SECONDS: "10"
+    ports:
+      - "127.0.0.1:8099:8099"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8099/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      pipeline:
+        condition: service_healthy
+      hvac-actuator:
+        condition: service_healthy
+    restart: unless-stopped
