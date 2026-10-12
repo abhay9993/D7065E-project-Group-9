@@ -1,0 +1,154 @@
+{
+  "e2e": {
+    "passed": true,
+    "requirement": "NFR-01",
+    "room": "A1013",
+    "sense_to_actuate_s": 5.6,
+    "sense_to_actuate_model_min": 5.6,
+    "temp_at_arrival_c": 21.64,
+    "temp_30_model_min_later_c": 21.73,
+    "in_band_30_min_later": true,
+    "ran_at": "2026-10-12T15:38:53.072484+00:00"
+  },
+  "f1": {
+    "passed": true,
+    "requirement": "NFR-02",
+    "readings_back_s": 9.074417416995857,
+    "commands_back_s": 0.003434332989854738,
+    "recovery_s": 9.1,
+    "ran_at": "2026-10-12T15:41:02.850749+00:00"
+  },
+  "f2": {
+    "passed": true,
+    "requirement": "NFR-03",
+    "controller_modes_during_outage": {
+      "A1009": "failsafe",
+      "A1013": "failsafe"
+    },
+    "readings_in_window": 11,
+    "max_gap_between_readings_s": 5.004271,
+    "readings_back_s": 5.039926084020408,
+    "replayed_at_restart": 122018,
+    "replayed_before": 101212,
+    "ran_at": "2026-10-12T15:41:27.271773+00:00"
+  },
+  "f3": {
+    "passed": true,
+    "requirement": "NFR-06",
+    "safe_state_after_s": 56.16636308300076,
+    "safe_state": {
+      "A1009": [
+        21,
+        50
+      ],
+      "A1013": [
+        21,
+        50
+      ]
+    },
+    "control_resumed_after_restart_s": 10.032857499987585,
+    "ran_at": "2026-10-12T15:42:23.788654+00:00"
+  },
+  "f4": {
+    "passed": true,
+    "requirement": "NFR-05",
+    "flagged_stuck_s": 46.2648211249907,
+    "failsafe_s": 55.32478366600117,
+    "recovered_s": 10.067502042016713,
+    "ran_at": "2026-10-12T15:43:46.462630+00:00"
+  },
+  "f5": {
+    "passed": true,
+    "requirement": "NFR-05",
+    "rejected_readings": 16,
+    "controller_modes": {
+      "A1009": "occupied",
+      "A1013": "occupied"
+    },
+    "ran_at": "2026-10-12T15:45:07.106000+00:00"
+  },
+  "f6": {
+    "passed": true,
+    "requirement": "NFR-05",
+    "flagged_stale_s": 30.2074075419805,
+    "failsafe_s": 39.27221624998492,
+    "recovered_s": 10.09513387500192,
+    "other_room_mode": "occupied",
+    "ran_at": "2026-10-12T15:45:42.380938+00:00"
+  },
+  "f7": {
+    "passed": true,
+    "requirement": "NFR-02",
+    "restarted_by_restart_policy_s": 0.13697083300212398,
+    "fresh_readings_after_s": 5.610862875008024,
+    "controller_modes_after": {
+      "A1009": "occupied",
+      "A1013": "occupied"
+    },
+    "ran_at": "2026-10-12T15:46:46.976786+00:00"
+  },
+  "f7b": {
+    "passed": true,
+    "requirement": "NFR-02",
+    "failsafe_after_s": 34.215036917012185,
+    "restarted_by_restart_policy": false,
+    "recovered_after_restart_s": 8.075633624976035,
+    "ran_at": "2026-10-12T15:47:07.936379+00:00"
+  },
+  "d1": {
+    "passed": true,
+    "baseline_rooms_safe_after_s": 62.22736291700858,
+    "adaptive_rooms_unaffected": true,
+    "baseline_back_after_s": 10.034581458981847,
+    "ran_at": "2026-10-12T15:48:26.950605+00:00"
+  },
+  "d2": {
+    "passed": true,
+    "control_kept_deciding": true,
+    "evaluation_samples_before": 3386,
+    "evaluation_samples_after_restart": 3386,
+    "evaluation_back_after_s": 1.0104032499948516,
+    "ran_at": "2026-10-12T15:49:55.721555+00:00"
+  },
+  "d3": {
+    "passed": true,
+    "model_minutes_extrapolated_in_60s": 60,
+    "controller_modes_during": {
+      "A1009": "setback",
+      "A1013": "setback"
+    },
+    "occupancy_sim_back_after_s": 1.0067133339762222,
+    "model_clock_after_restart": "2026-10-12T07:30:53Z",
+    "ran_at": "2026-10-12T15:50:48.336010+00:00"
+  },
+  "d4": {
+    "passed": true,
+    "quality_while_frozen": {
+      "energy": "ok",
+      "humidity": "ok",
+      "occupancy": "ok",
+      "temperature": "ok"
+    },
+    "energy_before_kwh": 369.168,
+    "energy_after_restart_kwh": 369.473,
+    "ran_at": "2026-10-12T15:52:05.347459+00:00"
+  },
+  "d5": {
+    "passed": true,
+    "applied_during_outage": {
+      "A1009": false,
+      "A1013": false
+    },
+    "commands_land_again_after_s": 9.055866375012556,
+    "ran_at": "2026-10-12T15:53:06.813827+00:00"
+  },
+  "d6": {
+    "passed": true,
+    "controller_modes": {
+      "A1009": "occupied",
+      "A1013": "occupied"
+    },
+    "evaluation_samples_skipped": 6,
+    "ran_at": "2026-10-12T15:53:56.809981+00:00"
+  }
+}

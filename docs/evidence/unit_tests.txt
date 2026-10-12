@@ -1,0 +1,65 @@
+=== services/simulator
+--- PASS: TestOccupiedRoomReachesComfortBandOnAColdDay (0.00s)
+--- PASS: TestSetbackHoldsEighteenDegrees (0.00s)
+--- PASS: TestBodyHeatWarmsAnUnheatedRoom (0.00s)
+--- PASS: TestLargeStepIsStable (0.00s)
+--- PASS: TestVentilationCostsHeat (0.00s)
+--- PASS: TestHumidityRisesWithPeopleAndStaysInRange (0.00s)
+--- PASS: TestEnergyMeterOnlyCountsWhenTheUnitRuns (0.00s)
+PASS
+coverage: 15.7% of statements
+ok  	hvac/simulator	0.001s	coverage: 15.7% of statements
+=== services/sensors
+--- PASS: TestFaultModes (0.00s)
+--- PASS: TestOutboxKeepsReadingsUntilDelivered (0.00s)
+--- PASS: TestEachKindReadsItsOwnValue (0.00s)
+PASS
+coverage: 38.4% of statements
+ok  	hvac/sensors	0.002s	coverage: 38.4% of statements
+=== services/pipeline
+--- PASS: TestValidateRejectsBadReadings (0.00s)
+--- PASS: TestIngestRejectsDuplicatesAndOutOfOrder (0.00s)
+--- PASS: TestStoreSurvivesRestart (0.00s)
+--- PASS: TestQualityFlags (0.00s)
+--- PASS: TestOccupancyIsNeverFlaggedStuck (0.00s)
+PASS
+coverage: 55.4% of statements
+ok  	hvac/pipeline	0.001s	coverage: 55.4% of statements
+=== services/controller
+--- PASS: TestOccupiedRoomHeldAtComfortAndVentilated (0.00s)
+--- PASS: TestShortAbsenceKeepsComfortHysteresis (0.00s)
+--- PASS: TestEmptyRoomSetsBackUnlessArrivalIsLikely (0.00s)
+--- PASS: TestBadDataFailsSafe (0.00s)
+--- PASS: TestHumidityRaisesVentilationButIsNotSafetyCritical (0.00s)
+--- PASS: TestPriorLearnsWhenARoomIsUsuallyOccupied (0.00s)
+--- PASS: TestForecastStatsCountHitsAndFalseAlarms (0.00s)
+PASS
+coverage: 34.1% of statements
+ok  	hvac/controller	0.001s	coverage: 34.1% of statements
+=== services/actuators/hvac
+--- PASS: TestCommandIsClampedAndApplied (0.00s)
+--- PASS: TestOnlyTheOwnerMayCommandARoom (0.00s)
+--- PASS: TestWatchdogAppliesSafeStateWhenControllerGoesQuiet (0.00s)
+PASS
+coverage: 49.6% of statements
+ok  	hvac/actuators/hvac	0.002s	coverage: 49.6% of statements
+=== services/baseline-controller
+--- PASS: TestScheduleFollowsOfficeHours (0.00s)
+--- PASS: TestScheduleFollowsTheModelClock (0.00s)
+PASS
+coverage: 21.4% of statements
+ok  	hvac/baseline-controller	0.002s	coverage: 21.4% of statements
+=== services/evaluation
+--- PASS: TestComfortUsesAFixedBandNotTheSetpoint (0.00s)
+--- PASS: TestArrivalWindow (0.00s)
+--- PASS: TestMeterResetAndClockJumpsAreNotCounted (0.00s)
+--- PASS: TestUsableSkipsBadData (0.00s)
+--- PASS: TestReportComparesGroupsPerSquareMetre (0.00s)
+PASS
+coverage: 43.5% of statements
+ok  	hvac/evaluation	0.001s	coverage: 43.5% of statements
+=== services/dashboard
+--- PASS: TestSeverity (0.00s)
+PASS
+coverage: 4.8% of statements
+ok  	hvac/dashboard	0.001s	coverage: 4.8% of statements

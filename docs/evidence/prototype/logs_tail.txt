@@ -1,0 +1,80 @@
+simulator-1  | 2026/10/12 00:11:50 simulator[A1009]: occ=1 setpoint=22.0 fan=100% -> temp=18.88C humidity=20.6%
+simulator-1  | 2026/10/12 00:11:50 simulator[A1010]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:11:50 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:11:50 simulator[A1015]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:11:55 simulator[A1009]: occ=1 setpoint=22.0 fan=100% -> temp=19.53C humidity=18.4%
+simulator-1  | 2026/10/12 00:11:55 simulator[A1010]: occ=1 setpoint=18.0 fan=0% -> temp=4.16C humidity=42.0%
+simulator-1  | 2026/10/12 00:11:55 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:11:55 simulator[A1015]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:00 simulator[A1009]: occ=1 setpoint=22.0 fan=100% -> temp=19.89C humidity=16.9%
+simulator-1  | 2026/10/12 00:12:00 simulator[A1010]: occ=1 setpoint=18.0 fan=0% -> temp=4.30C humidity=43.9%
+simulator-1  | 2026/10/12 00:12:00 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:00 simulator[A1015]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:05 simulator[A1009]: occ=1 setpoint=22.0 fan=84% -> temp=19.96C humidity=16.5%
+simulator-1  | 2026/10/12 00:12:05 simulator[A1010]: occ=1 setpoint=22.0 fan=100% -> temp=11.52C humidity=34.7%
+simulator-1  | 2026/10/12 00:12:05 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:05 simulator[A1015]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:10 simulator[A1009]: occ=1 setpoint=22.0 fan=84% -> temp=20.00C humidity=16.2%
+simulator-1  | 2026/10/12 00:12:10 simulator[A1010]: occ=1 setpoint=22.0 fan=100% -> temp=15.48C humidity=28.3%
+simulator-1  | 2026/10/12 00:12:10 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:10 simulator[A1015]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:15 simulator[A1009]: occ=1 setpoint=22.0 fan=80% -> temp=19.99C humidity=16.1%
+simulator-1  | 2026/10/12 00:12:15 simulator[A1010]: occ=1 setpoint=22.0 fan=100% -> temp=17.67C humidity=23.8%
+simulator-1  | 2026/10/12 00:12:15 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:15 simulator[A1015]: occ=1 setpoint=18.0 fan=0% -> temp=4.16C humidity=42.0%
+simulator-1  | 2026/10/12 00:12:20 simulator[A1009]: occ=1 setpoint=22.0 fan=80% -> temp=19.99C humidity=16.1%
+simulator-1  | 2026/10/12 00:12:20 simulator[A1010]: occ=0 setpoint=22.0 fan=100% -> temp=18.72C humidity=18.7%
+simulator-1  | 2026/10/12 00:12:20 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:20 simulator[A1015]: occ=1 setpoint=18.0 fan=0% -> temp=4.30C humidity=43.9%
+simulator-1  | 2026/10/12 00:12:25 simulator[A1009]: occ=1 setpoint=22.0 fan=80% -> temp=19.98C humidity=16.1%
+simulator-1  | 2026/10/12 00:12:25 simulator[A1010]: occ=0 setpoint=22.0 fan=100% -> temp=19.29C humidity=15.1%
+simulator-1  | 2026/10/12 00:12:25 simulator[A1013]: occ=0 setpoint=18.0 fan=0% -> temp=4.01C humidity=40.0%
+simulator-1  | 2026/10/12 00:12:25 simulator[A1015]: occ=1 setpoint=18.0 fan=0% -> temp=4.43C humidity=45.7%
+simulator-1  | 2026/10/12 00:12:30 simulator[A1009]: occ=1 setpoint=22.0 fan=80% -> temp=19.98C humidity=16.0%
+simulator-1  | 2026/10/12 00:12:30 simulator[A1010]: occ=0 setpoint=22.0 fan=100% -> temp=19.61C humidity=15.0%
+simulator-1  | 2026/10/12 00:12:30 simulator[A1013]: occ=1 setpoint=18.0 fan=0% -> temp=4.16C humidity=42.0%
+simulator-1  | 2026/10/12 00:12:30 simulator[A1015]: occ=1 setpoint=18.0 fan=0% -> temp=4.56C humidity=47.4%
+simulator-1  | 2026/10/12 00:12:35 simulator[A1009]: occ=1 setpoint=22.0 fan=81% -> temp=19.99C humidity=16.0%
+simulator-1  | 2026/10/12 00:12:35 simulator[A1010]: occ=0 setpoint=22.0 fan=50% -> temp=19.31C humidity=15.0%
+simulator-1  | 2026/10/12 00:12:35 simulator[A1013]: occ=1 setpoint=18.0 fan=0% -> temp=4.30C humidity=43.9%
+simulator-1  | 2026/10/12 00:12:35 simulator[A1015]: occ=1 setpoint=18.0 fan=0% -> temp=4.69C humidity=49.1%
+controller-1  | 2026/10/12 00:10:22 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:32 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:32 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:32 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:42 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:42 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:42 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:52 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:52 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:10:52 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:02 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:02 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:02 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:12 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:12 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:12 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:22 controller: room=level0/A1009 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:22 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:22 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:32 controller: room=level0/A1009 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:11:32 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:32 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:42 controller: room=level0/A1009 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:11:42 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:42 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:52 controller: room=level0/A1009 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:11:52 controller: room=level0/A1010 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:11:52 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:12:02 controller: room=level0/A1009 setpoint=22.0 fan=84% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:02 controller: room=level0/A1010 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:02 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:12:12 controller: room=level0/A1009 setpoint=22.0 fan=80% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:12 controller: room=level0/A1010 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:12 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:12:22 controller: room=level0/A1009 setpoint=22.0 fan=80% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:22 controller: room=level0/A1010 setpoint=22.0 fan=100% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:22 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false
+controller-1  | 2026/10/12 00:12:32 controller: room=level0/A1009 setpoint=22.0 fan=81% reason="room occupied: hold near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:32 controller: room=level0/A1010 setpoint=22.0 fan=50% reason="anticipating arrival (forecast 2.2 occupants in 5min): pre-conditioning near 22.0C" failsafe=false
+controller-1  | 2026/10/12 00:12:32 controller: room=level0/A1013 setpoint=18.0 fan=0% reason="room empty: low-energy setback" failsafe=false

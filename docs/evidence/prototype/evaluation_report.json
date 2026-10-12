@@ -1,0 +1,45 @@
+{
+    "rooms": {
+        "A1009": {
+            "samples": 11814,
+            "avg_fan_speed": 12.995395293719204,
+            "occupied_pct": 21.796174030810903,
+            "comfort_pct_when_occupied": 15.495145631067961,
+            "setback_pct": 77.1796174030811,
+            "started_at": "2026-10-08T07:32:52.85031002Z"
+        },
+        "A1010": {
+            "samples": 11813,
+            "avg_fan_speed": 13.103259121306955,
+            "occupied_pct": 21.95885888428003,
+            "comfort_pct_when_occupied": 15.111796453353893,
+            "setback_pct": 76.99991534749851,
+            "started_at": "2026-10-08T07:32:52.85037627Z"
+        },
+        "A1013": {
+            "samples": 11814,
+            "avg_fan_speed": 13.125681394955048,
+            "occupied_pct": 22.17707804299983,
+            "comfort_pct_when_occupied": 15.458015267175572,
+            "setback_pct": 76.82410699170475,
+            "started_at": "2026-10-08T07:32:52.850418145Z"
+        },
+        "A1015": {
+            "samples": 11814,
+            "avg_fan_speed": 12.282884713052312,
+            "occupied_pct": 21.779244963602505,
+            "comfort_pct_when_occupied": 14.496696463272444,
+            "setback_pct": 59.0570509564923,
+            "started_at": "2026-10-08T07:32:52.850450603Z"
+        }
+    },
+    "comparison": {
+        "adaptive_avg_fan_speed": 13.074777799723389,
+        "baseline_avg_fan_speed": 12.282884713052312,
+        "adaptive_comfort_pct_when_occupied": 15.354987803312364,
+        "baseline_comfort_pct_when_occupied": 14.496696463272444,
+        "adaptive_setback_pct": 77.00121328404954,
+        "baseline_setback_pct": 59.0570509564923
+    },
+    "updated_at": "2026-10-12T00:12:37.117770806Z"
+}
