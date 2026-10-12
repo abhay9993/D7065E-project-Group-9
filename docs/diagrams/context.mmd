@@ -1,0 +1,18 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}, "flowchart": {"nodeSpacing": 90, "rankSpacing": 70}}}%%
+flowchart TB
+    occupants(["Occupants<br/>[Person]<br/>people in the offices"])
+    manager(["Building manager<br/>[Person]<br/>watches rooms and decisions"])
+    occsim["Occupancy simulator<br/>[External system]<br/>moves people, owns the<br/>model clock"]
+    system["Smart HVAC system<br/>[Software system]<br/>heats and ventilates offices<br/>based on occupancy"]
+    buildsim["BuildSim<br/>[External system]<br/>building state, REST API,<br/>3D viewer"]
+    occupants -. "are simulated by" .-> occsim
+    occsim -- "writes occupancy and people [REST]" --> buildsim
+    occsim -- "gives the model clock [REST]" --> system
+    buildsim -- "gives occupancy,<br/>room areas [REST]" --> system
+    system -- "writes values, actuator<br/>state, layer, alerts [REST]" --> buildsim
+    system -- "shows rooms and decisions<br/>[HTTP, dashboard]" --> manager
+    buildsim -- "shows the 3D view [WebSocket]" --> manager
+    classDef sys fill:#dbe9ff,stroke:#1f6feb,stroke-width:2px,color:#1a1a1a
+    classDef ext fill:#e6e6e6,stroke:#888888,color:#1a1a1a
+    class system sys
+    class occsim,buildsim ext

@@ -1,0 +1,36 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+flowchart TB
+    occsim["Occupancy simulator<br/>[External system]<br/>people + model clock"]
+    buildsim["BuildSim<br/>[External system]<br/>building state + 3D view"]
+    subgraph ours [Smart HVAC system]
+        sim["Simulator<br/>[Container: Go]<br/>room physics, energy meter"]
+        sens["Sensors x4<br/>[Container: Go, one program]<br/>temperature, humidity,<br/>occupancy, energy"]
+        pipe["Pipeline<br/>[Container: Go]<br/>checks and stores readings<br/>(file on a volume), quality flags"]
+        ctrl["Controller<br/>[Container: Go]<br/>rules, learned table,<br/>quality gate"]
+        base["Baseline controller<br/>[Container: Go]<br/>fixed schedule"]
+        act["HVAC actuator<br/>[Container: Go]<br/>clamp, ownership, lease"]
+        eval["Evaluation<br/>[Container: Go]<br/>comfort and energy<br/>(results on a volume)"]
+        dash["Dashboard<br/>[Container: Go]<br/>tables, 3D layer, alerts"]
+    end
+    manager(["Building manager<br/>[Person]"])
+    occsim -- "occupancy, people [PUT]" --> buildsim
+    buildsim -- "floor plan [GET]" --> occsim
+    buildsim -- "occupancy, setpoint, fan,<br/>room areas [GET]" --> sim
+    sim -- "devices [POST],<br/>true values [PUT]" --> buildsim
+    buildsim -- "sensor values,<br/>occupancy [GET]" --> sens
+    sens -- "readings [POST]" --> pipe
+    pipe -- "room state [GET]" --> ctrl
+    pipe -- "room state [GET]" --> eval
+    act -- "applied state [GET]" --> eval
+    buildsim -- "room areas [GET]" --> eval
+    ctrl -- "command [POST]" --> act
+    base -- "command [POST]" --> act
+    act -- "setpoint, fan [PUT]" --> buildsim
+    pipe & ctrl & act & eval -- "status [GET]" --> dash
+    dash -- "layer, alerts [PUT]" --> buildsim
+    occsim -. "model clock [GET]:<br/>simulator, controllers,<br/>evaluation" .-> ours
+    dash -- "web page [HTTP]" --> manager
+    buildsim -- "3D view [WebSocket]" --> manager
+    classDef ext fill:#e6e6e6,stroke:#888888,color:#1a1a1a
+    class occsim,buildsim ext
+    style ours fill:#f7faff,stroke:#2b5797,stroke-width:1px,stroke-dasharray:6 4

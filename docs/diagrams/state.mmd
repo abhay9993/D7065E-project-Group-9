@@ -1,0 +1,21 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+stateDiagram-v2
+    direction LR
+    [*] --> Normal
+    state "Normal operation: the rules decide every 10 s" as Normal {
+        [*] --> Setback
+        Setback --> Preheat: P ≥ 0.5
+        Preheat --> Setback: P < 0.5
+        Setback --> Occupied: someone arrives
+        Preheat --> Occupied: someone arrives
+        Occupied --> Occupied: empty < 30 min
+        Occupied --> Setback: empty 30 min, P < 0.5
+        Occupied --> Preheat: empty 30 min, P ≥ 0.5
+    }
+    Normal --> Failsafe: bad or no data
+    Failsafe --> Normal: good data again,<br/>the rules pick the mode
+    note left of Failsafe
+        21 °C, fan 50 %.
+        Also applied by the actuator
+        if the controller goes quiet for 60 s.
+    end note

@@ -1,0 +1,14 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+flowchart LR
+    browser(["Browser"])
+    subgraph laptop [Laptop: Docker Compose, one network, ports only on 127.0.0.1]
+        direction LR
+        world["<b>Only for the simulation<br/>and the experiment</b><br/>BuildSim<br/>occupancy-sim<br/>simulator<br/>baseline-controller"]
+        edge["<b>Edge server in a real building</b><br/>(control loop)<br/>4 sensor containers<br/>pipeline + volume<br/>controller + volume<br/>hvac-actuator"]
+        site["<b>Site or cloud server</b><br/>(not on the control path)<br/>evaluation + volume<br/>dashboard"]
+        world <-->|"sensor values, setpoint and fan,<br/>baseline commands, model clock [REST]"| edge
+        edge <-->|"room state, status [REST]"| site
+        site <-->|"3D layer and alerts,<br/>room areas, model clock [REST]"| world
+    end
+    browser -- ":9090 3D view,<br/>:8081 people and clock" --> world
+    browser -- ":8093 dashboard" --> site

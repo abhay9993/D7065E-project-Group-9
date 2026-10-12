@@ -1,0 +1,31 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+sequenceDiagram
+    autonumber
+    participant O as occupancy-sim
+    participant B as BuildSim
+    participant SO as sensor-occupancy
+    participant P as pipeline
+    participant C as controller
+    participant A as hvac-actuator
+    participant S as simulator
+    participant ST as sensor-temperature
+    O->>B: PUT /api/occupancy (A1013: 1 person)
+    SO->>B: GET /api/occupancy (every 5 s)
+    SO->>P: POST reading occupancy=1
+    P-->>SO: 204 stored in readings.jsonl
+    C->>P: GET /api/rooms/state (every 10 s)
+    P-->>C: occupancy 1, temp 17.9, quality ok
+    Note over C: prior.observe(slot, occupied)<br/>decide → "occupied", 22 °C, fan 50 %
+    C->>A: POST /commands (source controller)
+    A->>B: PUT A1013-setpoint 22.0, PUT A1013-fan 50.0
+    A-->>C: 200 applied (a few seconds after sensing, end-to-end test)
+    S->>B: GET occupancy + actuator state (next tick)
+    Note over S: unit heats at full capacity
+    S->>B: PUT A1013-temp, rising (18.5 °C 10 model min later)
+    ST->>B: GET A1013-temp
+    ST->>P: POST reading temperature 18.5
+    alt pipeline down
+        ST--xP: POST fails
+        Note over ST: keep in outbox, retry next poll
+        C--xP: GET fails → failsafe 21 °C / 50 %
+    end

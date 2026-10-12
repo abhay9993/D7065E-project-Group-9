@@ -1,0 +1,31 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+flowchart LR
+    pipe["Pipeline<br/>[Container]"]
+    occsim["Occupancy simulator<br/>[External system]"]
+    act["HVAC actuator<br/>[Container]"]
+    dash["Dashboard<br/>[Container]"]
+    subgraph ctrlbox [Controller container]
+        fetch["fetchState<br/>[Component]<br/>pipeline client"]
+        clock["simClock<br/>[Component]<br/>model time; extrapolates<br/>if the clock is down"]
+        prior[("prior<br/>[Component]<br/>P(occupied | weekday/weekend,<br/>30-min slot); prior.json")]
+        decide{{"decide()<br/>[Component]<br/>1 quality gate, 2 rules + grace,<br/>3 pre-heat if P ≥ 0.5, humidity"}}
+        send["sendCommand<br/>[Component]<br/>actuator client"]
+        audit[("audit log<br/>decisions.jsonl")]
+        status["status API<br/>[Component]<br/>/api/status, /api/prior"]
+    end
+    pipe -- "room state [GET]" --> fetch
+    occsim -- "model clock [GET]" --> clock
+    fetch -- "readings + quality" --> decide
+    fetch -- "occupancy (only if quality ok)" --> prior
+    clock -- "model time" --> decide
+    clock -- "time slot" --> prior
+    prior -- "P ahead" --> decide
+    decide -- "setpoint, fan, reason" --> send
+    send -- "command [POST]" --> act
+    decide -- "decision + send result" --> audit
+    decide -- "mode, reason, forecast stats" --> status
+    prior -- "learned table" --> status
+    status -- "status [GET]" --> dash
+    classDef ext fill:#e6e6e6,stroke:#888888,color:#1a1a1a
+    class pipe,occsim,act,dash ext
+    style ctrlbox fill:#f7faff,stroke:#2b5797,stroke-width:1px,stroke-dasharray:6 4

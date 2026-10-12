@@ -1,0 +1,13 @@
+%%{init: {"theme": "base", "fontFamily": "Helvetica, Arial, sans-serif", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "primaryColor": "#e3edfb", "primaryBorderColor": "#2b5797", "primaryTextColor": "#1a1a1a", "lineColor": "#2b5797", "secondaryColor": "#f3f7fd", "tertiaryColor": "#ffffff", "clusterBkg": "#f7faff", "clusterBorder": "#9db4d6", "edgeLabelBackground": "#ffffff", "actorBkg": "#e3edfb", "actorBorder": "#2b5797", "signalColor": "#2b5797", "signalTextColor": "#1a1a1a", "noteBkgColor": "#fff7d6", "noteBorderColor": "#c9a227"}}}%%
+flowchart TB
+    s1[sensors x4<br/>noise, outbox] -- "POST reading" --> v{validate}
+    v -- "422" --> q[(rejected.jsonl<br/>quarantine)]
+    v --> d{newer than last?}
+    d -- "409 duplicate" --> x((drop))
+    d --> b[("readings.jsonl<br/>BRONZE: raw, append-only,<br/>replayed at start")]
+    b --> m["memory: latest + 720 per signal<br/>SILVER: validated, with<br/>stale/stuck quality"]
+    m --> c[controller]
+    m --> e[evaluation]
+    m --> db[dashboard]
+    e --> g[("samples.jsonl + evaluation.json<br/>GOLD: scored model-time samples")]
+    g --> p[scripts/plot_results.py]
