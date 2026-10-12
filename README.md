@@ -1,78 +1,110 @@
 # Smart HVAC Optimisation (Group 9)
 
-This repo holds our D7065E project: a smart HVAC system for a simulated office building,
-built on top of BuildSim.
+Our project for D7065E at LTU, by Monika Shrivastava and Abhay Soni.
 
-The idea is simple. Rooms fill up and empty out during the day. Instead of running
-heating, cooling, and ventilation on a fixed schedule, we want the system to look at
-occupancy, temperature, and humidity in each room and decide when to actually turn
-things up or down. When a meeting room fills up, it should get more cooling or
-ventilation. When it empties, it should drop into a low-energy mode. The goal is to
-keep people comfortable without wasting energy.
+Offices are often heated on a fixed schedule, whether anyone is there or not. We built a
+controller that heats each room based on what is actually happening in it. It reads
+temperature, humidity and occupancy, learns when each room is usually used, pre-heats
+before people arrive and turns the heat down after they leave. If it cannot trust the
+sensor data, it falls back to a safe setting instead of guessing.
 
-See the project proposal for the full write-up of the use case, scenario, and plan.
+Everything runs on top of BuildSim, the course's simulated building. To see whether our
+controller is any better, a fixed schedule controls two other offices of the same size,
+and we compare the two.
 
-## What's in here
+**Report:** [docs/D7065E_Group9_Final_Report.pdf](docs/D7065E_Group9_Final_Report.pdf)
+(architecture, requirements, tests, results and what we learned). The original proposal is
+[docs/proposal.md](docs/proposal.md).
 
-- `services/simulator` - generates the physical behaviour behind the sensors: room
-  temperature from a heat balance model, humidity, and occupancy patterns through the day.
-- `services/sensors/temperature`, `services/sensors/humidity`, `services/sensors/occupancy` -
-  one process per sensor type, handling every managed room.
-- `services/actuators/hvac` - the only process that writes HVAC actuator state into
-  BuildSim; validates and clamps whatever a controller proposes.
-- `services/controller` - the adaptive autonomous decision-maker. Watches sensor data
-  and a short-horizon occupancy/temperature forecast and decides when to change HVAC
-  settings, room by room.
-- `services/baseline-controller` - a fixed Mon-Fri 08:00-18:00 schedule with no sensor
-  feedback at all, run on its own room purely as the evaluation baseline.
-- `services/pipeline` - collects sensor readings, keeps recent history, and computes a
-  simple linear-trend forecast per room/signal.
-- `services/evaluation` - continuously measures energy (mean fan speed) and comfort
-  (% time in-band while occupied) per room, and compares the adaptive rooms against
-  the baseline room.
-- `services/dashboard` - shows room state, forecasts, controller/actuator decisions,
-  and the evaluation comparison, aggregated server-side.
-- `buildingsim/`, `occupancysim/` - the course-provided BuildSim server and occupancy
-  simulator.
-- `docs/final-report/` - the architecture document (LaTeX + D2 diagrams).
+## What's in the repo
 
-Each service is meant to run as its own process (containerized with Docker) and talk to
-the others through a defined interface, not by importing each other's code. BuildSim
-provides the building itself and the API we plug into.
+| Folder | What it does |
+|---|---|
+| `services/simulator` | The physics: heat and moisture in each room, the room heating unit, the fan and an energy meter |
+| `services/sensors` | One sensor program, run as four containers (temperature, humidity, occupancy, energy). Adds noise, keeps readings while the pipeline is down, and can be told to lie for testing |
+| `services/pipeline` | Checks each reading, drops duplicates, saves everything to a file, and marks data that is old or stuck |
+| `services/controller` | Our controller: simple rules, the learned table of when rooms are used, and the data check |
+| `services/baseline-controller` | The fixed schedule we compare against (Mon–Fri, 07:00–18:00) |
+| `services/actuators/hvac` | The only service that changes the heating. It limits values, checks which controller owns a room, and goes to a safe setting if the controller goes quiet for 60 s |
+| `services/evaluation` | Measures comfort and energy for both controllers |
+| `services/dashboard` | Our web page, plus a temperature layer and alerts in the BuildSim 3D view |
+| `buildingsim/`, `occupancysim/` | From the course, not changed by us |
+| `tests/` | System tests (end to end, fault injection, stopping services) and the stress test |
+| `scripts/` | Start a clean experiment, make the plots, build the report |
+| `docs/` | The report, its diagrams (`diagrams/`, Mermaid) and pictures (`figures/`), and the measured results (`evidence/`) |
 
-## Running the stack
+## How to run it
 
-Everything (BuildSim, the occupancy simulator, and all our services) runs via the root
-`docker-compose.yaml`, wired to four office rooms on `level0`: `A1009`, `A1010`, and
-`A1013` under the adaptive controller, `A1015` under the fixed-schedule baseline.
+You need Docker (with Compose). For the tests you also need Python 3. Run everything from
+the top folder of the repo.
 
 ```bash
-docker compose up --build
+docker compose up --build -d     # first time takes a few minutes
+docker compose ps                # wait a minute, everything should be "healthy"
 ```
 
-Open:
+`occupancy-sim` has no health check, so it only shows "Up". That's fine.
 
-- <http://127.0.0.1:9090> - BuildSim 3D viewer (the building, live sensor/actuator state).
-- <http://127.0.0.1:8081> - occupancy simulator UI (controls how many people are in the
-  building and how they move; also controls the simulated clock).
-- <http://127.0.0.1:8093> - our dashboard (per-room readings, forecasts, controller and
-  actuator decisions, and the live adaptive-vs-baseline evaluation comparison).
-- <http://127.0.0.1:8099/api/report> - raw evaluation numbers (energy/comfort).
+Then open:
 
-`services/simulator` seeds `hvac-<room>` equipment (temperature/humidity sensors,
-setpoint/fan actuators) automatically on startup for every room in `ROOM_NAMES`, then
-closes the loop every `TICK_SECONDS` by reading occupancy and actuator state back from
-BuildSim and writing new sensor values. The sensor processes republish those values to
-`services/pipeline`; `services/controller` decides a setpoint/fan speed every
-`DECIDE_SECONDS` for its rooms, `services/baseline-controller` does the same on a fixed
-schedule for its own room, and `services/actuators/hvac` is the only process that
-writes actuator state back into BuildSim, for either controller.
+- <http://127.0.0.1:8093>: our dashboard
+- <http://127.0.0.1:9090/?layer=hvac-temperature&floor=level0>: the BuildSim 3D view with our layer
+- <http://127.0.0.1:8081>: people in the building and the clock (runs 60× faster than real time)
 
-All service ports (8090-8099, 9090) are published to `127.0.0.1` only. To change which
-rooms are managed, edit the `ROOM_NAMES` (adaptive) / `ROOM_NAME` (baseline) /
-`ADAPTIVE_ROOMS` / `BASELINE_ROOMS` environment variables in `docker-compose.yaml` -
-any room BuildSim's floor plan reports as `type: "room"` with area under the
-office threshold works; check via
-`GET /api/building/floors/{level}` before picking one (see the architecture
-document's Section 1 for why this matters).
+Our controller runs A1009 and A1013, the fixed schedule runs A1010 and A1015. You can change
+the rooms and timings in `docker-compose.yaml`.
 
+```bash
+docker compose logs -f controller   # see what the controller is doing
+docker compose down                 # stop (data is kept)
+docker compose down -v              # stop and wipe the data
+```
+
+The pipeline, controller and evaluation save their data on Docker volumes, so restarting
+doesn't lose anything. Only `down -v` deletes it.
+
+## Tests
+
+Unit tests (you don't need Go installed, they run in a Go container):
+
+```bash
+for s in simulator sensors pipeline controller actuators/hvac baseline-controller evaluation dashboard; do
+  docker run --rm -v "$PWD/services/$s":/src -w /src golang:1.23-alpine go test ./... ; done
+```
+
+System tests, with the system running. They walk a person in end to end, make sensors
+lie or go quiet, and stop each service one by one. Takes about 30 minutes.
+
+```bash
+python3 tests/system/system_test.py
+python3 tests/system/system_test.py e2e f2    # just the ones you name
+```
+
+Stress test. It starts its own copy of the system, so your running one isn't touched, and
+keeps adding rooms and speeding up until it can't keep up. About 20 minutes.
+
+```bash
+python3 tests/stress/stress_test.py
+```
+
+Heads up: both of these overwrite our results in `docs/evidence/`, so copy them first if you
+want to keep them.
+
+## Other useful commands
+
+```bash
+# rebuild and restart just one service
+# (keep --no-deps, otherwise BuildSim restarts too and the building state is gone)
+docker compose up -d --build --no-deps controller
+
+# start a fresh comparison run from Monday 00:00
+# (this wipes the learned table and the measurements so far; one model day = 24 real minutes)
+./scripts/start_experiment.sh
+
+# redraw the plots from docs/evidence/ (needs matplotlib)
+python3 scripts/plot_results.py
+
+# redraw the diagrams and rebuild the report PDF (needs Node.js, and Docker or pdflatex)
+python3 scripts/build_report.py
+python3 scripts/build_report.py --diagrams-only   # only the diagrams
+```
