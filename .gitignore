@@ -13,7 +13,7 @@ venv/
 # Data / DB
 *.db
 *.parquet
-data/
+/data/
 
 # Env
 .env
@@ -25,3 +25,9 @@ data/
 # IDE
 .vscode/*
 !.vscode/extensions.json
+
+# LaTeX build files (scripts/build_report.py removes them)
+*.aux
+*.log
+*.toc
+*.out
