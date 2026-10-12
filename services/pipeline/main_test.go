@@ -1,94 +1,110 @@
 package main
 
 import (
+	"errors"
 	"math"
 	"testing"
 	"time"
 )
 
-func TestTrendInsufficientSamples(t *testing.T) {
-	if f := trend(nil); f.Samples != 0 || f.Predicted5m != 0 || f.SlopePerMin != 0 {
-		t.Fatalf("trend(nil) = %+v, want zero forecast", f)
+func temp(value float64, at time.Time) reading {
+	return reading{Room: "level0/A1009", Type: "temperature", Value: value, Unit: "°C", Timestamp: at}
+}
+
+func TestValidateRejectsBadReadings(t *testing.T) {
+	now := time.Now()
+	bad := map[string]reading{
+		"bare room name":  {Room: "A1009", Type: "temperature", Value: 21, Timestamp: now},
+		"unknown type":    {Room: "level0/A1009", Type: "co2", Value: 600, Timestamp: now},
+		"NaN":             temp(math.NaN(), now),
+		"too hot":         temp(85, now),
+		"negative count":  {Room: "level0/A1009", Type: "occupancy", Value: -1, Timestamp: now},
+		"from the future": temp(21, now.Add(time.Hour)),
 	}
-	f := trend([]reading{{Value: 5, Timestamp: time.Now()}})
-	if f.Samples != 1 || f.Predicted5m != 5 || f.SlopePerMin != 0 {
-		t.Fatalf("trend(1 sample) = %+v, want flat forecast at the sample value", f)
+	for name, r := range bad {
+		if err := validate(r, now); !errors.Is(err, errInvalid) {
+			t.Errorf("%s: validate = %v, want errInvalid", name, err)
+		}
+	}
+	if err := validate(temp(21.4, now), now); err != nil {
+		t.Errorf("a normal reading was rejected: %v", err)
 	}
 }
 
-func TestTrendRisingSlopeExtrapolates(t *testing.T) {
-	t0 := time.Now()
-	history := []reading{
-		{Value: 0, Timestamp: t0},
-		{Value: 1, Timestamp: t0.Add(1 * time.Minute)},
-		{Value: 2, Timestamp: t0.Add(2 * time.Minute)},
-	}
-	f := trend(history)
-	if f.Samples != 3 {
-		t.Fatalf("samples = %d, want 3", f.Samples)
-	}
-	if f.SlopePerMin <= 0 {
-		t.Fatalf("slope_per_min = %v, want > 0 for a rising trend", f.SlopePerMin)
-	}
-	want := 2 + f.SlopePerMin*5
-	if math.Abs(f.Predicted5m-want) > 1e-9 {
-		t.Fatalf("predicted_5m = %v, want %v (current + slope*5)", f.Predicted5m, want)
-	}
-}
-
-func TestTrendWindowCapsHistory(t *testing.T) {
-	t0 := time.Now()
-	history := make([]reading, 0, forecastWindow+10)
-	for i := 0; i < forecastWindow+10; i++ {
-		history = append(history, reading{Value: 0, Timestamp: t0.Add(time.Duration(i) * time.Minute)})
-	}
-	// Make only the samples inside the window rise, to prove older ones were dropped.
-	for i := len(history) - forecastWindow; i < len(history); i++ {
-		history[i].Value = float64(i)
-	}
-	f := trend(history)
-	if f.Samples != forecastWindow {
-		t.Fatalf("samples = %d, want capped at forecastWindow=%d", f.Samples, forecastWindow)
-	}
-}
-
-func TestStoreIngestAndState(t *testing.T) {
+func TestIngestRejectsDuplicatesAndOutOfOrder(t *testing.T) {
 	s := newStore()
-	s.ingest(reading{Room: "level0/A1009", Type: "temperature", Value: 21.5, Timestamp: time.Now()})
-
-	st := s.state("level0/A1009", 30*time.Second)
-	r, ok := st.Readings["temperature"]
-	if !ok || r.Value != 21.5 {
-		t.Fatalf("readings[temperature] = %+v, ok=%v, want value 21.5", r, ok)
+	t0 := time.Now().Add(-time.Minute)
+	if err := s.ingest(temp(21, t0)); err != nil {
+		t.Fatalf("first reading: %v", err)
 	}
-	if st.Stale["temperature"] {
-		t.Fatalf("fresh reading reported as stale")
+	if err := s.ingest(temp(21, t0)); !errors.Is(err, errDuplicate) {
+		t.Fatalf("same reading again (a sensor retry): %v, want errDuplicate", err)
 	}
-	if _, ok := st.Forecast["temperature"]; !ok {
-		t.Fatalf("expected a forecast entry for temperature")
+	if err := s.ingest(temp(21, t0.Add(-time.Second))); !errors.Is(err, errDuplicate) {
+		t.Fatalf("older reading: %v, want errDuplicate", err)
 	}
-}
-
-func TestStoreStaleness(t *testing.T) {
-	s := newStore()
-	s.ingest(reading{Room: "level0/A1009", Type: "temperature", Value: 20, Timestamp: time.Now().Add(-time.Hour)})
-
-	st := s.state("level0/A1009", 30*time.Second)
-	if !st.Stale["temperature"] {
-		t.Fatalf("hour-old reading should be stale with a 30s threshold")
+	if s.counts.Accepted != 1 || s.counts.Duplicates != 2 {
+		t.Fatalf("counts = %+v, want 1 accepted, 2 duplicates", s.counts)
 	}
 }
 
-func TestHistoryForRespectsLimit(t *testing.T) {
+func TestStoreSurvivesRestart(t *testing.T) {
+	dir := t.TempDir()
+	s, err := openStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t0 := time.Now().Add(-time.Minute)
+	for i := 0; i < 5; i++ {
+		if err := s.ingest(temp(20+float64(i), t0.Add(time.Duration(i)*time.Second))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = s.ingest(temp(99, t0.Add(10*time.Second))) // rejected, must not be replayed
+	s.file.Close()
+
+	restarted, err := openStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(restarted.historyFor("level0/A1009", "temperature", 0)); got != 5 {
+		t.Fatalf("history after restart = %d readings, want 5", got)
+	}
+	if restarted.latest["level0/A1009"]["temperature"].Value != 24 {
+		t.Fatalf("latest after restart = %v, want 24", restarted.latest["level0/A1009"]["temperature"].Value)
+	}
+	// Dedup must also work across the restart: a sensor re-sending a stored reading.
+	if err := restarted.ingest(temp(24, t0.Add(4*time.Second))); !errors.Is(err, errDuplicate) {
+		t.Fatalf("re-sent reading after restart: %v, want errDuplicate", err)
+	}
+}
+
+func TestQualityFlags(t *testing.T) {
 	s := newStore()
-	for i := 0; i < 10; i++ {
-		s.ingest(reading{Room: "level0/A1009", Type: "temperature", Value: float64(i), Timestamp: time.Now()})
+	now := time.Now()
+	for i := 0; i < stuckWindow; i++ {
+		s.remember(temp(21.37, now.Add(time.Duration(i-stuckWindow)*time.Second)))
 	}
-	h := s.historyFor("level0/A1009", "temperature", 3)
-	if len(h) != 3 {
-		t.Fatalf("len(history) = %d, want 3", len(h))
+	if q := s.state("level0/A1009", 30*time.Second).Quality["temperature"]; q != "stuck" {
+		t.Fatalf("quality after %d identical readings = %q, want stuck", stuckWindow, q)
 	}
-	if h[len(h)-1].Value != 9 {
-		t.Fatalf("last history value = %v, want the most recent (9)", h[len(h)-1].Value)
+	s.remember(temp(21.41, now))
+	if q := s.state("level0/A1009", 30*time.Second).Quality["temperature"]; q != "ok" {
+		t.Fatalf("quality after a changing reading = %q, want ok", q)
+	}
+	s.remember(reading{Room: "level0/A1009", Type: "occupancy", Value: 0, Timestamp: now.Add(-time.Hour)})
+	if q := s.state("level0/A1009", 30*time.Second).Quality["occupancy"]; q != "stale" {
+		t.Fatalf("quality of an hour-old reading = %q, want stale", q)
+	}
+}
+
+func TestOccupancyIsNeverFlaggedStuck(t *testing.T) {
+	s := newStore()
+	now := time.Now()
+	for i := 0; i < 3*stuckWindow; i++ {
+		s.remember(reading{Room: "level0/A1009", Type: "occupancy", Value: 0, Timestamp: now.Add(time.Duration(i-3*stuckWindow) * time.Second)})
+	}
+	if q := s.state("level0/A1009", 30*time.Second).Quality["occupancy"]; q != "ok" {
+		t.Fatalf("an empty room's counter = %q, want ok (a counter may repeat)", q)
 	}
 }

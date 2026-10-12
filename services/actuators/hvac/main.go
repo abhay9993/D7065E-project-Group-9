@@ -1,6 +1,14 @@
 // Command hvac-actuator is the only process authorised to write HVAC actuator
 // state into BuildSim. It owns validation, range-clamping, and reporting; the
-// controller proposes a command here instead of writing BuildSim directly.
+// controllers propose a command here instead of writing BuildSim directly.
+//
+// Two safety rules live here, independent of any controller:
+//   - ownership: each room accepts commands from exactly one source
+//     (ROOM_OWNERS), so the adaptive controller and the baseline can never
+//     fight over a room;
+//   - a command lease (watchdog): if a room's controller goes quiet for
+//     COMMAND_TIMEOUT_SECONDS, the room is put in a safe state instead of
+//     holding its last command forever (e.g. a fan at 81 % in an empty room).
 package main
 
 import (
@@ -13,6 +21,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -23,6 +33,7 @@ type incomingCommand struct {
 	Setpoint float64 `json:"setpoint"`
 	FanSpeed float64 `json:"fan_speed"`
 	Reason   string  `json:"reason"`
+	Source   string  `json:"source"`
 }
 
 type appliedState struct {
@@ -30,6 +41,8 @@ type appliedState struct {
 	Setpoint  float64   `json:"setpoint"`
 	FanSpeed  float64   `json:"fan_speed"`
 	Reason    string    `json:"reason"`
+	Source    string    `json:"source"`
+	Watchdog  bool      `json:"watchdog"` // true while the safe state is applied by the lease
 	AppliedAt time.Time `json:"applied_at"`
 }
 
@@ -38,43 +51,66 @@ const (
 	maxSetpointC = 28.0
 	minFanSpeed  = 0.0
 	maxFanSpeed  = 100.0
+
+	// The watchdog's safe state: the same command the controller itself uses
+	// when it cannot trust its inputs.
+	safeSetpointC = 21.0
+	safeFanSpeed  = 50.0
 )
 
-type lastState struct {
-	mu     sync.RWMutex
-	byRoom map[string]appliedState
+type actuator struct {
+	buildsimURL string
+	client      *http.Client
+	owners      map[string]string // room -> the only source allowed to command it
+	timeout     time.Duration
+
+	mu          sync.RWMutex
+	byRoom      map[string]appliedState
+	lastCommand map[string]time.Time
 }
 
-func newLastState() *lastState {
-	return &lastState{byRoom: make(map[string]appliedState)}
-}
-
-func (l *lastState) set(s appliedState) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.byRoom[s.Room] = s
-}
-
-func (l *lastState) snapshot() map[string]appliedState {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	out := make(map[string]appliedState, len(l.byRoom))
-	for k, v := range l.byRoom {
-		out[k] = v
+func newActuator(buildsimURL string, owners map[string]string, timeout time.Duration) *actuator {
+	a := &actuator{
+		buildsimURL: buildsimURL,
+		client:      &http.Client{Timeout: 5 * time.Second},
+		owners:      owners,
+		timeout:     timeout,
+		byRoom:      map[string]appliedState{},
+		lastCommand: map[string]time.Time{},
 	}
-	return out
+	for room := range owners {
+		a.lastCommand[room] = time.Now() // a controller that never shows up also trips the watchdog
+	}
+	return a
 }
 
 func main() {
 	buildsimURL := getenv("BUILDSIM_URL", "http://127.0.0.1:9090")
 	listenAddr := getenv("LISTEN_ADDR", ":8091")
+	owners := parseOwners(getenv("ROOM_OWNERS", "A1009=controller,A1013=controller,A1010=baseline,A1015=baseline"))
+	timeout := getenvDuration("COMMAND_TIMEOUT_SECONDS", 60*time.Second)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	a := newActuator(buildsimURL, owners, timeout)
+	go a.watchdog(ctx)
 
-	ls := newLastState()
+	server := &http.Server{Addr: listenAddr, Handler: a.routes()}
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
+
+	log.Printf("hvac-actuator: listening on %s, owners=%v, lease=%s", listenAddr, owners, timeout)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("hvac-actuator: server stopped: %v", err)
+	}
+}
+
+func (a *actuator) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /commands", func(w http.ResponseWriter, r *http.Request) {
@@ -87,61 +123,102 @@ func main() {
 			http.Error(w, "room is required", http.StatusBadRequest)
 			return
 		}
-		setpoint := clamp(in.Setpoint, minSetpointC, maxSetpointC)
-		fan := clamp(in.FanSpeed, minFanSpeed, maxFanSpeed)
-
-		if err := setActuatorState(r.Context(), client, buildsimURL, in.Room+"-setpoint", setpoint); err != nil {
-			log.Printf("hvac-actuator[%s]: apply setpoint: %v", in.Room, err)
-			http.Error(w, "failed to apply setpoint", http.StatusBadGateway)
+		if owner, ok := a.owners[in.Room]; !ok || owner != in.Source {
+			log.Printf("hvac-actuator[%s]: refused command from %q (owner %q)", in.Room, in.Source, owner)
+			http.Error(w, fmt.Sprintf("room %s is not commanded by %q", in.Room, in.Source), http.StatusForbidden)
 			return
 		}
-		if err := setActuatorState(r.Context(), client, buildsimURL, in.Room+"-fan", fan); err != nil {
-			log.Printf("hvac-actuator[%s]: apply fan speed: %v", in.Room, err)
-			http.Error(w, "failed to apply fan speed", http.StatusBadGateway)
+		a.mu.Lock()
+		a.lastCommand[in.Room] = time.Now()
+		a.mu.Unlock()
+
+		applied, err := a.apply(r.Context(), in, false)
+		if err != nil {
+			log.Printf("hvac-actuator[%s]: %v", in.Room, err)
+			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
-
-		applied := appliedState{Room: in.Room, Setpoint: setpoint, FanSpeed: fan, Reason: in.Reason, AppliedAt: time.Now()}
-		ls.set(applied)
-		log.Printf("hvac-actuator[%s]: applied setpoint=%.1f fan=%.0f%% reason=%q", in.Room, setpoint, fan, in.Reason)
 		writeJSON(w, applied)
 	})
 
 	mux.HandleFunc("GET /state", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, ls.snapshot())
+		a.mu.RLock()
+		defer a.mu.RUnlock()
+		writeJSON(w, a.byRoom)
 	})
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	return mux
+}
 
-	server := &http.Server{Addr: listenAddr, Handler: mux}
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
-	}()
+// apply clamps the command to the safe range and writes it to BuildSim.
+func (a *actuator) apply(ctx context.Context, in incomingCommand, watchdog bool) (appliedState, error) {
+	setpoint := clamp(in.Setpoint, minSetpointC, maxSetpointC)
+	fan := clamp(in.FanSpeed, minFanSpeed, maxFanSpeed)
 
-	log.Printf("hvac-actuator: listening on %s", listenAddr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("hvac-actuator: server stopped: %v", err)
+	if err := a.setActuatorState(ctx, in.Room+"-setpoint", setpoint); err != nil {
+		return appliedState{}, fmt.Errorf("apply setpoint: %w", err)
+	}
+	if err := a.setActuatorState(ctx, in.Room+"-fan", fan); err != nil {
+		return appliedState{}, fmt.Errorf("apply fan speed: %w", err)
+	}
+	applied := appliedState{Room: in.Room, Setpoint: setpoint, FanSpeed: fan, Reason: in.Reason,
+		Source: in.Source, Watchdog: watchdog, AppliedAt: time.Now()}
+	a.mu.Lock()
+	a.byRoom[in.Room] = applied
+	a.mu.Unlock()
+	log.Printf("hvac-actuator[%s]: applied setpoint=%.1f fan=%.0f%% source=%s reason=%q", in.Room, setpoint, fan, in.Source, in.Reason)
+	return applied, nil
+}
+
+// watchdog checks the command leases every few seconds.
+func (a *actuator) watchdog(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.checkLeases(ctx, time.Now())
+		}
 	}
 }
 
-func setActuatorState(ctx context.Context, client *http.Client, baseURL, actuatorID string, value float64) error {
+// checkLeases puts every room whose controller has been quiet for longer than
+// the timeout into the safe state (once; it stays there until a command comes).
+func (a *actuator) checkLeases(ctx context.Context, now time.Time) {
+	for room, owner := range a.owners {
+		a.mu.RLock()
+		quiet := now.Sub(a.lastCommand[room])
+		alreadySafe := a.byRoom[room].Watchdog
+		a.mu.RUnlock()
+		if quiet < a.timeout || alreadySafe {
+			continue
+		}
+		reason := fmt.Sprintf("watchdog: no command from %s for %.0fs, safe state", owner, quiet.Seconds())
+		if _, err := a.apply(ctx, incomingCommand{Room: room, Setpoint: safeSetpointC, FanSpeed: safeFanSpeed,
+			Reason: reason, Source: "watchdog"}, true); err != nil {
+			log.Printf("hvac-actuator[%s]: watchdog could not apply safe state: %v", room, err)
+		}
+	}
+}
+
+func (a *actuator) setActuatorState(ctx context.Context, actuatorID string, value float64) error {
 	body, err := json.Marshal(map[string]string{"state": fmt.Sprintf("%.1f", value)})
 	if err != nil {
 		return err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut,
-		baseURL+"/api/actuators/"+url.PathEscape(actuatorID)+"/state", bytes.NewReader(body))
+		a.buildsimURL+"/api/actuators/"+url.PathEscape(actuatorID)+"/state", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -150,6 +227,18 @@ func setActuatorState(ctx context.Context, client *http.Client, baseURL, actuato
 		return fmt.Errorf("buildsim returned HTTP %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// parseOwners reads "A1009=controller,A1010=baseline" into a map.
+func parseOwners(raw string) map[string]string {
+	owners := map[string]string{}
+	for _, pair := range strings.Split(raw, ",") {
+		room, owner, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if ok && room != "" && owner != "" {
+			owners[room] = owner
+		}
+	}
+	return owners
 }
 
 func clamp(v, lo, hi float64) float64 {
@@ -170,6 +259,18 @@ func writeJSON(w http.ResponseWriter, v any) {
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getenvDuration(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if seconds, err := strconv.Atoi(v); err == nil {
+			return time.Duration(seconds) * time.Second
+		}
+		if d, err := time.ParseDuration(v); err == nil {
+			return d // e.g. "500ms", used by the stress test
+		}
 	}
 	return fallback
 }

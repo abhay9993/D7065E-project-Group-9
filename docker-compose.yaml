@@ -1,3 +1,12 @@
+# Group 9 Smart HVAC: one container per responsibility.
+#
+# `init: true` runs a tiny init as PID 1, so our process can crash (or be killed with
+# kill -9) like on a real machine and the restart policy brings it back.
+#
+# Rooms are compared in size-matched pairs: A1009 (15 m², adaptive) vs A1010
+# (14 m², baseline) and A1013 (27 m², adaptive) vs A1015 (31 m², baseline).
+# The room lists can be overridden from the environment, e.g. for the stress test:
+#   ALL_ROOMS=... ADAPTIVE_ROOMS=... ROOM_OWNERS=... docker compose up -d
 services:
   buildsim:
     build:
@@ -27,27 +36,36 @@ services:
     restart: unless-stopped
 
   simulator:
+    init: true
     build:
       context: ./services/simulator
     environment:
       BUILDSIM_URL: "http://buildsim:9090"
+      OCCUPANCY_URL: "http://occupancy-sim:8081"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013,A1015"
-      TICK_SECONDS: "5"
+      ROOM_NAMES: "${ALL_ROOMS:-A1009,A1010,A1013,A1015}"
+      TICK_SECONDS: "${TICK_SECONDS:-5}"
+    ports:
+      - "127.0.0.1:8094:8094"
     depends_on:
       buildsim:
         condition: service_healthy
+      occupancy-sim:
+        condition: service_started
     restart: unless-stopped
 
   sensor-temperature:
+    init: true
     build:
-      context: ./services/sensors/temperature
+      context: ./services/sensors
     environment:
+      SENSOR_TYPE: "temperature"
+      LISTEN_ADDR: ":8095"
       BUILDSIM_URL: "http://buildsim:9090"
       PIPELINE_URL: "http://pipeline:8090"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013,A1015"
-      POLL_SECONDS: "5"
+      ROOM_NAMES: "${ALL_ROOMS:-A1009,A1010,A1013,A1015}"
+      POLL_SECONDS: "${POLL_SECONDS:-5}"
     depends_on:
       buildsim:
         condition: service_healthy
@@ -56,14 +74,17 @@ services:
     restart: unless-stopped
 
   sensor-humidity:
+    init: true
     build:
-      context: ./services/sensors/humidity
+      context: ./services/sensors
     environment:
+      SENSOR_TYPE: "humidity"
+      LISTEN_ADDR: ":8096"
       BUILDSIM_URL: "http://buildsim:9090"
       PIPELINE_URL: "http://pipeline:8090"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013,A1015"
-      POLL_SECONDS: "5"
+      ROOM_NAMES: "${ALL_ROOMS:-A1009,A1010,A1013,A1015}"
+      POLL_SECONDS: "${POLL_SECONDS:-5}"
     depends_on:
       buildsim:
         condition: service_healthy
@@ -72,14 +93,36 @@ services:
     restart: unless-stopped
 
   sensor-occupancy:
+    init: true
     build:
-      context: ./services/sensors/occupancy
+      context: ./services/sensors
     environment:
+      SENSOR_TYPE: "occupancy"
+      LISTEN_ADDR: ":8097"
       BUILDSIM_URL: "http://buildsim:9090"
       PIPELINE_URL: "http://pipeline:8090"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013,A1015"
-      POLL_SECONDS: "5"
+      ROOM_NAMES: "${ALL_ROOMS:-A1009,A1010,A1013,A1015}"
+      POLL_SECONDS: "${POLL_SECONDS:-5}"
+    depends_on:
+      buildsim:
+        condition: service_healthy
+      pipeline:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sensor-energy:
+    init: true
+    build:
+      context: ./services/sensors
+    environment:
+      SENSOR_TYPE: "energy"
+      LISTEN_ADDR: ":8089"
+      BUILDSIM_URL: "http://buildsim:9090"
+      PIPELINE_URL: "http://pipeline:8090"
+      ROOM_LEVEL: "level0"
+      ROOM_NAMES: "${ALL_ROOMS:-A1009,A1010,A1013,A1015}"
+      POLL_SECONDS: "${POLL_SECONDS:-5}"
     depends_on:
       buildsim:
         condition: service_healthy
@@ -88,10 +131,14 @@ services:
     restart: unless-stopped
 
   pipeline:
+    init: true
     build:
       context: ./services/pipeline
     environment:
       STALE_AFTER_SECONDS: "30"
+      DATA_DIR: "/data"
+    volumes:
+      - pipeline-data:/data
     ports:
       - "127.0.0.1:8090:8090"
     healthcheck:
@@ -103,10 +150,13 @@ services:
     restart: unless-stopped
 
   hvac-actuator:
+    init: true
     build:
       context: ./services/actuators/hvac
     environment:
       BUILDSIM_URL: "http://buildsim:9090"
+      ROOM_OWNERS: "${ROOM_OWNERS:-A1009=controller,A1013=controller,A1010=baseline,A1015=baseline}"
+      COMMAND_TIMEOUT_SECONDS: "60"
     ports:
       - "127.0.0.1:8091:8091"
     healthcheck:
@@ -121,14 +171,20 @@ services:
     restart: unless-stopped
 
   controller:
+    init: true
     build:
       context: ./services/controller
     environment:
       PIPELINE_URL: "http://pipeline:8090"
       ACTUATOR_URL: "http://hvac-actuator:8091"
+      OCCUPANCY_URL: "http://occupancy-sim:8081"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013"
-      DECIDE_SECONDS: "10"
+      ROOM_NAMES: "${ADAPTIVE_ROOMS:-A1009,A1013}"
+      DECIDE_SECONDS: "${DECIDE_SECONDS:-10}"
+      PREHEAT_THRESHOLD: "0.5"
+      DATA_DIR: "/data"
+    volumes:
+      - controller-data:/data
     ports:
       - "127.0.0.1:8092:8092"
     healthcheck:
@@ -145,13 +201,14 @@ services:
     restart: unless-stopped
 
   baseline-controller:
+    init: true
     build:
       context: ./services/baseline-controller
     environment:
       ACTUATOR_URL: "http://hvac-actuator:8091"
-      ROOM_LEVEL: "level0"
-      ROOM_NAME: "A1015"
-      DECIDE_SECONDS: "10"
+      OCCUPANCY_URL: "http://occupancy-sim:8081"
+      ROOM_NAMES: "${BASELINE_ROOMS:-A1010,A1015}"
+      DECIDE_SECONDS: "${DECIDE_SECONDS:-10}"
     ports:
       - "127.0.0.1:8098:8098"
     healthcheck:
@@ -166,6 +223,7 @@ services:
     restart: unless-stopped
 
   dashboard:
+    init: true
     build:
       context: ./services/dashboard
     environment:
@@ -174,34 +232,36 @@ services:
       BASELINE_CONTROLLER_URL: "http://baseline-controller:8098"
       ACTUATOR_URL: "http://hvac-actuator:8091"
       EVALUATION_URL: "http://evaluation:8099"
+      BUILDSIM_URL: "http://buildsim:9090"
       ROOM_LEVEL: "level0"
-      ROOM_NAMES: "A1009,A1010,A1013,A1015"
+      ADAPTIVE_ROOMS: "${ADAPTIVE_ROOMS:-A1009,A1013}"
+      BASELINE_ROOMS: "${BASELINE_ROOMS:-A1010,A1015}"
       REFRESH_SECONDS: "5"
     ports:
       - "127.0.0.1:8093:8093"
     depends_on:
       pipeline:
         condition: service_healthy
-      controller:
-        condition: service_healthy
-      baseline-controller:
-        condition: service_healthy
       hvac-actuator:
-        condition: service_healthy
-      evaluation:
         condition: service_healthy
     restart: unless-stopped
 
   evaluation:
+    init: true
     build:
       context: ./services/evaluation
     environment:
       PIPELINE_URL: "http://pipeline:8090"
       ACTUATOR_URL: "http://hvac-actuator:8091"
+      OCCUPANCY_URL: "http://occupancy-sim:8081"
+      BUILDSIM_URL: "http://buildsim:9090"
       ROOM_LEVEL: "level0"
-      ADAPTIVE_ROOMS: "A1009,A1010,A1013"
-      BASELINE_ROOMS: "A1015"
+      ADAPTIVE_ROOMS: "${ADAPTIVE_ROOMS:-A1009,A1013}"
+      BASELINE_ROOMS: "${BASELINE_ROOMS:-A1010,A1015}"
       POLL_SECONDS: "10"
+      DATA_DIR: "/data"
+    volumes:
+      - evaluation-data:/data
     ports:
       - "127.0.0.1:8099:8099"
     healthcheck:
@@ -216,3 +276,10 @@ services:
       hvac-actuator:
         condition: service_healthy
     restart: unless-stopped
+
+# Named volumes keep the raw readings, the learned prior, the audit log and the
+# evaluation evidence across container restarts and rebuilds.
+volumes:
+  pipeline-data:
+  controller-data:
+  evaluation-data:

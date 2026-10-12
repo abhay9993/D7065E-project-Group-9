@@ -4,7 +4,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/evaluation .
 
 FROM alpine:3.20
-RUN adduser -D -u 65532 appuser
+RUN adduser -D -u 65532 appuser && mkdir /data && chown appuser /data
 COPY --from=build /out/evaluation /app
 USER appuser
 EXPOSE 8099
