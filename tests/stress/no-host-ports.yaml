@@ -1,0 +1,21 @@
+# Compose override for the stress test: the same stack, but no ports published on the
+# host, so it can run next to the normal stack (`docker compose -p g9stress ...`).
+services:
+  buildsim:
+    ports: !reset []
+  occupancy-sim:
+    ports: !reset []
+  simulator:
+    ports: !reset []
+  pipeline:
+    ports: !reset []
+  hvac-actuator:
+    ports: !reset []
+  controller:
+    ports: !reset []
+  baseline-controller:
+    ports: !reset []
+  dashboard:
+    ports: !reset []
+  evaluation:
+    ports: !reset []
